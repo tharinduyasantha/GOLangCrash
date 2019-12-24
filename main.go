@@ -1,9 +1,15 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
+	"strconv"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 )
 
@@ -26,24 +32,76 @@ type Author struct {
 var books []Book
 
 //Get All books
-
-func getBooks(w http.ResponseWriter, r *http.Request) {
-
-}
-func getBook(w http.ResponseWriter, r *http.Request) {
-
-}
-func createBook(w http.ResponseWriter, r *http.Request) {
-
-}
-func updateBook(w http.ResponseWriter, r *http.Request) {
-
+func getBooks(w http.ResponseWriter, router *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(books)
 }
 
-func deleteBook(w http.ResponseWriter, r *http.Request) {
+//Get single book
+func getBook(w http.ResponseWriter, router *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(router)
+	// Gets params
+	// Loop through books and find one with the id from the params
+	for _, item := range books {
+		if item.ID == params["id"] {
+			json.NewEncoder(w).Encode(item)
+			return
+		}
+	}
+	json.NewEncoder(w).Encode(&Book{})
+}
+func createBook(w http.ResponseWriter, router *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var book Book
+	_ = json.NewDecoder(router.Body).Decode(&book)
+	book.ID = strconv.Itoa(rand.Intn(10000000))
+	books = append(books, book)
+	json.NewEncoder(w).Encode(book)
+}
+
+//Update books
+func updateBook(w http.ResponseWriter, router *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(router)
+	for index, item := range books {
+		if item.ID == params["id"] {
+			books = append(books[:index], books[index+1:]...)
+			var book Book
+			_ = json.NewDecoder(router.Body).Decode(&book)
+			book.ID = params["id"]
+			books = append(books, book)
+			json.NewEncoder(w).Encode(book)
+			return
+		}
+	}
+}
+
+//Delete book
+func deleteBook(w http.ResponseWriter, router *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(router)
+	for index, item := range books {
+		if item.ID == params["id"] {
+			books = append(books[:index], books[index+1:]...)
+			break
+		}
+	}
+	json.NewEncoder(w).Encode(books)
 }
 
 func main() {
+
+	//database configs
+
+	db, err := sql.Open("mysql", "root:1234@tcp(127.0.0.1:3306)/golangcrash")
+
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+
+	fmt.Println("Successfully Connected to Database")
 	//Init Router
 
 	router := mux.NewRouter()
